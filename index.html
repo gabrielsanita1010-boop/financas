@@ -278,7 +278,7 @@
     document.getElementById('tx-list').innerHTML =
       '<div style="padding:1.5rem 1.25rem"><div style="height:14px;background:linear-gradient(90deg,#f0ede6 25%,#e2ddd4 50%,#f0ede6 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px;margin-bottom:10px"></div><div style="height:14px;background:linear-gradient(90deg,#f0ede6 25%,#e2ddd4 50%,#f0ede6 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px;width:70%"></div></div><style>@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}</style>';
     try {
-      const res  = await fetch(API + '?action=get');
+      const res  = await fetch(API + '?action=get&t=' + Date.now(), { redirect: 'follow' });
       const data = await res.json();
       transactions = data
         .map(r => ({ id: String(r.id), desc: r.desc, val: parseFloat(r.val), cat: r.cat, tipo: r.tipo, date: r.date }))
