@@ -318,17 +318,33 @@
     document.head.appendChild(script);
   }
 
-  // API: add
+  // API via JSONP (evita CORS)
+  function jsonp(params) {
+    return new Promise((resolve, reject) => {
+      const cbName = '__cb' + Date.now();
+      const script = document.createElement('script');
+      const timer  = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, 10000);
+      function cleanup() {
+        clearTimeout(timer);
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+      window[cbName] = function(data) { cleanup(); resolve(data); };
+      script.onerror = function() { cleanup(); reject(new Error('script error')); };
+      const qs = Object.entries({ ...params, callback: cbName, t: Date.now() })
+        .map(([k,v]) => k + '=' + encodeURIComponent(v)).join('&');
+      script.src = API + '?' + qs;
+      document.head.appendChild(script);
+    });
+  }
+
   async function apiAdd(tx) {
-    const res  = await fetch(API, { method:'POST', body: JSON.stringify({ action:'add', ...tx }) });
-    const data = await res.json();
+    const data = await jsonp({ action: 'add', id: tx.id, desc: tx.desc, val: tx.val, cat: tx.cat, tipo: tx.tipo, date: tx.date });
     if (data.status !== 'ok') throw new Error();
   }
 
-  // API: delete
   async function apiDelete(id) {
-    const res  = await fetch(API, { method:'POST', body: JSON.stringify({ action:'delete', id }) });
-    const data = await res.json();
+    const data = await jsonp({ action: 'delete', id });
     if (data.status !== 'ok') throw new Error();
   }
 
