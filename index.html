@@ -273,22 +273,49 @@
   }
 
   // Load all from Sheets
-  async function loadAll() {
+  // Load via JSONP para contornar CORS do Google Apps Script
+  function loadAll() {
     setSyncStatus('load');
     document.getElementById('tx-list').innerHTML =
       '<div style="padding:1.5rem 1.25rem"><div style="height:14px;background:linear-gradient(90deg,#f0ede6 25%,#e2ddd4 50%,#f0ede6 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px;margin-bottom:10px"></div><div style="height:14px;background:linear-gradient(90deg,#f0ede6 25%,#e2ddd4 50%,#f0ede6 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px;width:70%"></div></div><style>@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}</style>';
-    try {
-      const res  = await fetch(API + '?action=get&t=' + Date.now(), { redirect: 'follow' });
-      const data = await res.json();
-      transactions = data
-        .map(r => ({ id: String(r.id), desc: r.desc, val: parseFloat(r.val), cat: r.cat, tipo: r.tipo, date: r.date }))
-        .filter(r => r.desc && !isNaN(r.val));
-      setSyncStatus('ok');
-    } catch(e) {
+
+    const cbName = '__cb' + Date.now();
+    const script = document.createElement('script');
+    const timer  = setTimeout(() => {
+      cleanup();
       setSyncStatus('err');
       toast('Erro ao carregar. Verifique a conexão.');
+      render();
+    }, 10000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
     }
-    render();
+
+    window[cbName] = function(data) {
+      cleanup();
+      try {
+        transactions = data
+          .map(r => ({ id: String(r.id), desc: r.desc, val: parseFloat(r.val), cat: r.cat, tipo: r.tipo, date: r.date }))
+          .filter(r => r.desc && !isNaN(r.val));
+        setSyncStatus('ok');
+      } catch(err) {
+        setSyncStatus('err');
+        toast('Erro ao processar dados.');
+      }
+      render();
+    };
+
+    script.src = API + '?action=get&callback=' + cbName + '&t=' + Date.now();
+    script.onerror = function() {
+      cleanup();
+      setSyncStatus('err');
+      toast('Erro ao carregar. Verifique a conexão.');
+      render();
+    };
+    document.head.appendChild(script);
   }
 
   // API: add
